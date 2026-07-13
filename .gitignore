@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large/raw data
+/data/raw/*
+!/data/raw/.gitkeep
+taxi_data.csv
+*.parquet
+*.feather
+*.pkl
+*.joblib
+*.model
+*.cbm
+
+# OS
+.DS_Store

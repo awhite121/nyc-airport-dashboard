@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive NYC airport taxi timing advisor and analytics dashboard for Manhattan trips to JFK and LaGuardia.">
+  <title>When to Leave NYC — Airport Timing Advisor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#planner" aria-label="When to Leave NYC home">
+        <span class="brand-mark" aria-hidden="true">↗</span>
+        <span><strong>When to Leave</strong><small>NYC airport timing advisor</small></span>
+      </a>
+      <nav class="tabs" aria-label="Dashboard sections">
+        <button class="tab is-active" type="button" data-tab="planner">Planner</button>
+        <button class="tab" type="button" data-tab="analytics">Analytics</button>
+        <button class="tab" type="button" data-tab="model">Model</button>
+      </nav>
+      <div class="data-pill"><span class="pulse"></span><span id="headerTripCount">43,079</span> trips</div>
+    </header>
+
+    <main>
+      <section class="view is-active" id="planner-view" data-view="planner">
+        <div class="hero-row">
+          <div>
+            <p class="eyebrow">Airport trip intelligence</p>
+            <h1>Know when to leave—not just how long the ride might take.</h1>
+            <p class="hero-copy">Pick a Manhattan taxi zone, flight time, and airport. The advisor combines a trained duration model, late-trip risk, uncertainty, and airport buffer into one leave-by recommendation.</p>
+          </div>
+          <div class="scope-note"><span>Historical scope</span><strong>Manhattan → JFK / LGA</strong><small>August 2025 TLC trips · no live traffic</small></div>
+        </div>
+
+        <div class="planner-grid">
+          <div class="planner-left">
+            <section class="panel controls-panel" aria-labelledby="trip-details-title">
+              <div class="panel-heading">
+                <div><p class="eyebrow">Build your trip</p><h2 id="trip-details-title">Flight details</h2></div>
+                <button class="ghost-button" type="button" id="resetPlanner">Reset</button>
+              </div>
+
+              <div class="field-grid two">
+                <label class="field span-2" for="zoneSelect">
+                  <span>Pickup taxi zone</span>
+                  <select id="zoneSelect"></select>
+                  <small>Choose here or click a point on the map.</small>
+                </label>
+                <div class="field span-2">
+                  <span>Airport</span>
+                  <div class="segmented" role="group" aria-label="Airport">
+                    <button class="segment is-active" type="button" data-airport="JFK"><b>JFK</b><small>John F. Kennedy</small></button>
+                    <button class="segment" type="button" data-airport="LGA"><b>LGA</b><small>LaGuardia</small></button>
+                  </div>
+                </div>
+                <label class="field" for="flightDate"><span>Flight date</span><input id="flightDate" type="date"></label>
+                <label class="field" for="flightTime"><span>Flight departure</span><input id="flightTime" type="time" step="900"></label>
+                <label class="field" for="flightType"><span>Trip type</span><select id="flightType"><option value="domestic">Domestic flight</option><option value="international">International flight</option></select></label>
+                <label class="field" for="passengers"><span>Passengers</span><select id="passengers"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+              </div>
+
+              <div class="field risk-field">
+                <span>Planning style</span>
+                <div class="risk-options" role="radiogroup" aria-label="Planning style">
+                  <label><input type="radio" name="risk" value="standard" checked><span><b>Standard</b><small>Balances time and uncertainty</small></span></label>
+                  <label><input type="radio" name="risk" value="safer"><span><b>Safer</b><small>Uses the slower-range estimate</small></span></label>
+                  <label><input type="radio" name="risk" value="maximum"><span><b>Maximum</b><small>Most conservative airport plan</small></span></label>
+                </div>
+              </div>
+              <button class="primary-button" id="calculateButton" type="button"><span>Calculate leave time</span><span aria-hidden="true">→</span></button>
+            </section>
+
+            <section class="panel map-panel" aria-labelledby="map-title">
+              <div class="panel-heading map-heading">
+                <div><p class="eyebrow">Geographic explorer</p><h2 id="map-title">NYC taxi-zone map</h2></div>
+                <div class="compact-toggle" role="group" aria-label="Map view">
+                  <button type="button" class="is-active" data-map-mode="manhattan">Manhattan</button>
+                  <button type="button" data-map-mode="route">Full route</button>
+                </div>
+              </div>
+              <div class="map-wrap">
+                <svg id="zoneMap" viewBox="0 0 760 510" role="img" aria-labelledby="mapSvgTitle mapSvgDesc">
+                  <title id="mapSvgTitle">NYC airport taxi zone centroid map</title>
+                  <desc id="mapSvgDesc">Clickable taxi-zone centroid points for Manhattan and a route to the selected airport.</desc>
+                </svg>
+                <div class="map-tooltip" id="mapTooltip" role="status"></div>
+              </div>
+              <div class="map-footer"><span><i class="legend-dot selected"></i>Selected zone</span><span><i class="legend-dot zone"></i>Pickup zones</span><span><i class="legend-dot airport"></i>Airport</span><small id="mapNote">Centroid locations; not zone boundary polygons.</small></div>
+            </section>
+          </div>
+
+          <aside class="planner-right" aria-live="polite">
+            <section class="recommendation-card">
+              <div class="recommendation-top">
+                <div><p class="eyebrow light">Recommended departure</p><p class="leave-label">Leave by</p><p class="leave-time" id="leaveTime">—</p><p class="leave-date" id="leaveDate">Select your flight details</p></div>
+                <div class="risk-orb" id="riskOrb"><span id="riskPercent">—</span><small>slow-trip risk</small></div>
+              </div>
+              <div class="route-summary"><span id="routeFrom">Midtown Center</span><span class="route-line"><i></i><b>✈</b></span><span id="routeTo">JFK</span></div>
+              <div class="arrival-strip"><span>Target terminal arrival</span><strong id="terminalArrival">—</strong><small id="flightBufferLabel">90 min before flight</small></div>
+            </section>
+
+            <div class="metric-grid four">
+              <article class="metric-card"><span>Expected drive</span><strong id="expectedDuration">—</strong><small>model estimate</small></article>
+              <article class="metric-card"><span>Slower-range</span><strong id="p80Duration">—</strong><small>80th percentile</small></article>
+              <article class="metric-card"><span>Road budget</span><strong id="roadBudget">—</strong><small>drive + risk buffer</small></article>
+              <article class="metric-card"><span>Typical distance</span><strong id="tripDistance">—</strong><small>historical median</small></article>
+            </div>
+
+            <section class="panel insight-panel">
+              <div class="panel-heading"><div><p class="eyebrow">Why this recommendation</p><h2>Prediction drivers</h2></div><span class="confidence-badge" id="confidenceBadge">— confidence</span></div>
+              <div class="driver-list" id="driverList"></div>
+              <div class="evidence-box" id="evidenceBox"></div>
+            </section>
+
+            <section class="panel alternatives-panel">
+              <div class="panel-heading"><div><p class="eyebrow">What-if planner</p><h2>Alternative departure windows</h2></div></div>
+              <div id="alternativeList" class="alternative-list"></div>
+            </section>
+
+            <section class="disclaimer"><strong>Planning guidance—not a live guarantee.</strong><span>The model does not use current traffic, weather, construction, incidents, security lines, or flight changes.</span></section>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view" id="analytics-view" data-view="analytics">
+        <div class="section-header">
+          <div><p class="eyebrow">Historical intelligence</p><h1>What drives Manhattan airport-trip risk?</h1><p>Explore duration, slower-trip exposure, and ride volume across airports, hours, weekdays, and pickup zones.</p></div>
+          <div class="analytics-controls">
+            <label>Airport<select id="analyticsAirport"><option value="ALL">JFK + LGA</option><option value="JFK">JFK</option><option value="LGA">LGA</option></select></label>
+            <label>Metric<select id="analyticsMetric"><option value="avg">Average duration</option><option value="p80">80th percentile</option><option value="lateRate">Late-trip rate</option></select></label>
+          </div>
+        </div>
+
+        <div class="metric-grid analytics-kpis" id="analyticsKpis"></div>
+        <div class="analytics-layout">
+          <section class="panel chart-panel wide"><div class="panel-heading"><div><p class="eyebrow">By pickup hour</p><h2 id="hourlyChartTitle">Average duration throughout the day</h2></div><span class="chart-unit" id="hourlyUnit">minutes</span></div><div id="hourlyChart" class="chart-host"></div></section>
+          <section class="panel chart-panel"><div class="panel-heading"><div><p class="eyebrow">By weekday</p><h2>Day-of-week pattern</h2></div></div><div id="weekdayChart" class="chart-host"></div></section>
+          <section class="panel airport-panel"><div class="panel-heading"><div><p class="eyebrow">Airport comparison</p><h2>JFK vs. LaGuardia</h2></div></div><div id="airportComparison"></div></section>
+          <section class="panel heatmap-panel wide"><div class="panel-heading"><div><p class="eyebrow">Week × hour</p><h2>Risk and duration heatmap</h2></div><div class="heat-legend"><span>Lower</span><i></i><span>Higher</span></div></div><div id="heatmap" class="heatmap-scroll"></div></section>
+          <section class="panel zone-ranking"><div class="panel-heading"><div><p class="eyebrow">Pickup zones</p><h2>Highest modeled exposure</h2></div><button class="ghost-button" id="showAllZones" type="button">Show 15</button></div><div id="zoneTable"></div></section>
+          <section class="panel analytics-map-panel"><div class="panel-heading"><div><p class="eyebrow">Spatial view</p><h2>Zone metric map</h2></div></div><div class="map-wrap analytics-map"><svg id="analyticsMap" viewBox="0 0 620 470" role="img" aria-label="Manhattan taxi zone metric map"></svg><div class="map-tooltip" id="analyticsTooltip"></div></div><p class="map-caption">Point size reflects trip volume. Color intensity reflects the selected metric.</p></section>
+        </div>
+      </section>
+
+      <section class="view" id="model-view" data-view="model">
+        <div class="section-header model-header">
+          <div><p class="eyebrow">Transparent modeling</p><h1>How the prediction engine works.</h1><p>The deployed inference layer is trained from the supplied 43,079-trip dataset and pre-scores every Manhattan zone, airport, weekday, and departure hour for instant browser performance.</p></div>
+          <div class="model-status"><span>Deployed inference</span><strong id="modelName">Gradient-boosted ensemble</strong><small>Chronological holdout evaluation</small></div>
+        </div>
+
+        <div class="metric-grid model-kpis" id="modelKpis"></div>
+        <div class="model-layout">
+          <section class="panel pipeline-panel wide"><div class="panel-heading"><div><p class="eyebrow">Prediction pipeline</p><h2>From trip inputs to a leave-by time</h2></div></div><div class="pipeline" id="pipelineDiagram"></div></section>
+          <section class="panel importance-panel"><div class="panel-heading"><div><p class="eyebrow">Duration model</p><h2>Feature influence</h2></div></div><div id="durationImportance" class="importance-list"></div></section>
+          <section class="panel importance-panel"><div class="panel-heading"><div><p class="eyebrow">Risk model</p><h2>Feature influence</h2></div></div><div id="riskImportance" class="importance-list"></div></section>
+          <section class="panel threshold-panel wide"><div class="panel-heading"><div><p class="eyebrow">Decision threshold</p><h2>Precision vs. recall tradeoff</h2></div><label class="threshold-control">Threshold <input id="thresholdSlider" type="range" min="20" max="70" step="5" value="40"><strong id="thresholdValue">0.40</strong></label></div><div id="thresholdViz"></div></section>
+          <section class="panel benchmark-panel"><div class="panel-heading"><div><p class="eyebrow">Original project results</p><h2>Benchmark models</h2></div></div><div id="benchmarkCards"></div></section>
+          <section class="panel limitations-panel"><div class="panel-heading"><div><p class="eyebrow">Responsible use</p><h2>Known limitations</h2></div></div><ul><li>One month of historical yellow-taxi trips.</li><li>No live traffic, weather, incidents, road closures, or event data.</li><li>Only Manhattan pickups and JFK/LGA drop-offs.</li><li>Historical taxi-zone distance is a proxy before a live route exists.</li><li>Late risk is relative to typical conditions for an airport, hour, and weekday—not missed-flight probability.</li></ul></section>
+        </div>
+      </section>
+    </main>
+
+    <footer><span>When to Leave NYC</span><span id="footerData">Built from 43,079 supplied airport trips</span><span>Portfolio decision-support prototype</span></footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="data/app_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

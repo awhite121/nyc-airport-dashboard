@@ -1,0 +1,31 @@
+{
+  "dataset": {
+    "raw_rows": 3574091,
+    "clean_airport_trips": 43079,
+    "jfk_trips": 18986,
+    "lga_trips": 24093,
+    "late_rate": 0.1805
+  },
+  "regression": {
+    "baseline_mae": 13.06,
+    "xgboost_test_mae": 5.605,
+    "xgboost_test_rmse": 7.659,
+    "xgboost_test_r2": 0.773,
+    "random_forest_test_mae": 5.604,
+    "random_forest_test_rmse": 7.599,
+    "random_forest_test_r2": 0.776
+  },
+  "classification": {
+    "catboost_auc": 0.725,
+    "catboost_threshold_050": {
+      "precision": 0.299,
+      "recall": 0.662,
+      "f1": 0.412
+    },
+    "catboost_threshold_040": {
+      "precision": 0.257,
+      "recall": 0.826,
+      "f1": 0.392
+    }
+  }
+}
