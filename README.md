@@ -1,195 +1,175 @@
-# NYC Taxi Trip Duration & Late-Risk Prediction
+# When to Leave NYC ✈️
 
-> Predict Manhattan → JFK/LGA taxi trip duration and classify late-trip risk using pre-trip features, tree-based models, threshold tuning, and buffer-time guidance.
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://nyc-airport-dashboard.streamlit.app)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Deployed-FF4B4B?logo=streamlit&logoColor=white)
+![Machine Learning](https://img.shields.io/badge/ML-Gradient%20Boosting-20B2AA)
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue)](#)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange)](#)
-[![XGBoost](https://img.shields.io/badge/XGBoost-Regression-green)](#)
-[![CatBoost](https://img.shields.io/badge/CatBoost-Classification-yellow)](#)
+A decision-support app for Manhattan travelers heading to **JFK** or **LaGuardia**. Select a pickup zone, airport, flight time, and planning style to receive a recommended leave time, uncertainty range, slow-trip risk, and historical context.
 
-## Why this project matters
+## Live App
 
-Airport travel is a planning-under-uncertainty problem. A single ETA hides the risk of unusually slow trips, especially during congestion windows. This project turns raw NYC taxi records into a practical airport timing advisor:
+**Streamlit:** https://nyc-airport-dashboard.streamlit.app
 
-1. **How long will the trip take?** → regression  
-2. **What is the probability the trip will be unusually slow?** → imbalanced classification  
-3. **How much buffer should a traveler add?** → threshold and policy layer
+> The app URL becomes active after the first successful Streamlit Community Cloud deployment.
 
----
+## What the App Does
+
+- Click or search across **63 Manhattan taxi zones**
+- Switch between **JFK and LaGuardia**
+- Enter flight date, departure time, passengers, and trip type
+- Calculate an iterative **leave-by recommendation**
+- Show expected duration, p80, p90, road budget, and late-trip probability
+- Compare alternative departure windows
+- Explore hourly, weekday, airport, zone, heatmap, and spatial analytics
+- Review model performance, feature influence, thresholds, and limitations
+- Work across desktop and mobile without paid map APIs
 
 ## Project Snapshot
 
 | Item | Value |
 |---|---:|
-| Raw taxi records uploaded | 3,574,091 |
+| Raw taxi records analyzed | 3,574,091 |
 | Clean Manhattan → JFK/LGA trips | 43,079 |
 | JFK trips | 18,986 |
 | LGA trips | 24,093 |
 | Late-trip rate | 18.1% |
 | Median JFK duration | 54.2 min |
 | Median LGA duration | 28.5 min |
+| Pre-scored app scenarios | 21,168 |
 
-The large raw taxi extract is **not committed** because it is over normal GitHub file-size limits. The repo includes the cleaned modeling dataset and a smaller sample for fast experimentation.
+## Modeling Results
 
----
-
-## Key Results
-
-| Task | Best Model | Result | Interpretation |
-|---|---|---:|---|
-| Duration prediction | Random Forest / XGBoost | MAE ≈ **5.6 min** | Practical ETA accuracy for 30–60 min airport trips |
-| Regression baseline | Historical median | MAE ≈ **13.1 min** | ML cuts average error by more than half |
-| Late-risk classification | CatBoost | ROC-AUC ≈ **0.725** | Useful ranking of unusually slow trips |
-| Risk-averse threshold | CatBoost @ 0.40 | Recall ≈ **0.826** | Catches most late trips for traveler use case |
+| Task | Best Result | Interpretation |
+|---|---:|---|
+| Duration prediction | MAE ≈ **5.6 min** | Practical error for airport-trip planning |
+| Historical-median baseline | MAE ≈ **13.1 min** | ML cuts average error by more than half |
+| Late-risk classification | ROC-AUC ≈ **0.725** | Useful ranking of unusually slow trips |
+| Risk-averse threshold | Recall ≈ **0.826** | Catches most late trips at the selected policy threshold |
 
 ![Regression model comparison](reports/figures/regression_mae_comparison.png)
 
----
-
-## Modeling Flow
+## How the Product Works
 
 ```text
-data/raw taxi records
+NYC yellow-taxi records
         ↓
-filter to Manhattan pickups → JFK/LGA dropoffs
+Manhattan pickup + JFK/LGA destination filtering
         ↓
-clean impossible durations, zero distances, passenger issues
+Data cleaning and leakage-safe feature engineering
         ↓
-engineer pre-trip features only
+Duration, upper-quantile, and late-risk models
         ↓
-regression model predicts duration
+21,168 pre-scored zone × airport × weekday × hour scenarios
         ↓
-classification model predicts late-risk
-        ↓
-threshold + buffer policy creates traveler guidance
+Interactive leave-time recommendation and analytics dashboard
 ```
 
----
+The deployed app uses a self-contained interactive dashboard embedded through Streamlit. Predictions are pre-scored from the included modeling dataset, which keeps the public app fast and removes the need for a paid routing API or persistent Python inference server.
 
-## Feature Engineering
-
-Used only features available before or at pickup time:
-
-| Used | Excluded to avoid leakage |
-|---|---|
-| Pickup zone / location ID | Fare amount |
-| Destination airport | Tip amount |
-| Pickup hour / day of week | Tolls |
-| Trip distance | Total amount |
-| Passenger count | Any post-trip outcome |
-| Payment type | Dropoff duration-derived fields |
-
-This matters because including post-trip fare fields would make the model look better but fail in a real pre-trip prediction setting.
-
----
-
-## EDA Highlights
-
-![Median duration by hour](reports/figures/median_duration_by_hour.png)
-
-![Late rate by hour](reports/figures/late_rate_by_hour.png)
-
-![Top pickup zones](reports/figures/top_pickup_zones.png)
-
----
-
-## Late-Risk Framing
-
-Late trips were defined as:
-
-> `actual_duration > 1.2 × typical_duration` for the same airport × pickup hour × day-of-week group
-
-This focuses the classifier on unusually slow trips, not just naturally long JFK rides.
-
-Because late trips are the minority class, accuracy alone is misleading. The project evaluates precision, recall, F1, ROC-AUC, precision-recall tradeoffs, and threshold policy.
-
-![Threshold tradeoff](reports/figures/threshold_precision_recall.png)
-
----
-
-## Repository Structure
-
-```text
-.
-├── data/
-│   ├── processed/
-│   │   ├── taxi_clean_for_modeling.csv
-│   │   └── taxi_clean_sample.csv
-│   ├── raw/
-│   │   └── .gitkeep
-│   └── reference/
-│       └── taxi_zone_lookup.csv
-├── docs/
-│   ├── model_card.md
-│   ├── project_summary.md
-│   └── github_update_steps.md
-├── notebooks/
-│   ├── 00_project_overview.ipynb
-│   ├── 01_eda_airport_trips.ipynb
-│   ├── 02_duration_regression.ipynb
-│   ├── 03_late_risk_classification.ipynb
-│   └── original_cleaned/
-├── reports/
-│   ├── figures/
-│   └── model_results.md
-├── scripts/
-│   ├── make_dataset.py
-│   ├── train_classification.py
-│   └── train_regression.py
-├── src/taxi_risk/
-├── requirements.txt
-└── README.md
-```
-
----
-
-## How to Run
+## Run Locally
 
 ```bash
-git clone https://github.com/awhite121/NYC-Taxi-Trip-Duration-Late-Risk-Prediction.git
-cd NYC-Taxi-Trip-Duration-Late-Risk-Prediction
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+git clone https://github.com/awhite121/nyc-airport-dashboard.git
+cd nyc-airport-dashboard
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+streamlit run streamlit_app.py
 ```
 
-Run the notebooks:
+Then open `http://localhost:8501`.
+
+## Deploy on Streamlit Community Cloud
+
+Use these exact settings:
+
+| Setting | Value |
+|---|---|
+| Repository | `awhite121/nyc-airport-dashboard` |
+| Branch | `main` |
+| Main file path | `streamlit_app.py` |
+| App URL | `nyc-airport-dashboard` or another available name |
+| Python | `3.12` recommended |
+
+Click **Deploy**. Streamlit reads `requirements.txt` automatically.
+
+## Reproduce the ML Work
+
+The public app only needs Streamlit. Install the full modeling environment separately:
+
+```bash
+pip install -r requirements-dev.txt
+PYTHONPATH=src python scripts/train_regression.py
+PYTHONPATH=src python scripts/train_classification.py
+```
+
+Or explore the notebooks:
 
 ```bash
 jupyter lab
 ```
 
-Or run scripts:
+## Repository Structure
 
-```bash
-PYTHONPATH=src python scripts/train_regression.py
-PYTHONPATH=src python scripts/train_classification.py
+```text
+.
+├── streamlit_app.py                 # Streamlit deployment entrypoint
+├── .streamlit/config.toml           # App theme
+├── requirements.txt                 # Lightweight deployment dependencies
+├── requirements-dev.txt             # Modeling and notebook dependencies
+├── dashboard/
+│   ├── when-to-leave-nyc-dashboard.html
+│   ├── index.html
+│   ├── app.js
+│   ├── styles.css
+│   ├── data/app_data.js
+│   └── assets/
+├── data/
+│   ├── processed/
+│   └── reference/
+├── notebooks/
+├── reports/figures/
+├── scripts/
+├── src/taxi_risk/
+└── docs/
 ```
 
----
+## Feature Engineering
+
+Only information available before or at pickup is used.
+
+| Used | Excluded to prevent leakage |
+|---|---|
+| Pickup zone | Fare amount |
+| Destination airport | Tip amount |
+| Pickup hour and weekday | Tolls and total amount |
+| Trip distance | Dropoff-derived fields |
+| Passenger count | Post-trip outcomes |
+| Payment type | Actual trip duration |
+
+Late trips are defined relative to the typical duration for the same airport, pickup hour, and weekday group:
+
+```text
+actual duration > 1.2 × typical grouped duration
+```
 
 ## Limitations
 
-- Single-month sample; seasonality is not captured.
-- No weather, incident, subway disruption, major event, or live traffic data.
-- Focused only on Manhattan pickups to JFK/LGA.
-- Offline model; not deployed as a live routing service.
-- Trip distance is assumed to be available/pre-estimated before pickup.
+- The source data covers a single month, so broader seasonality is not represented.
+- The model does not include live traffic, weather, incidents, events, or flight-terminal conditions.
+- The app focuses on Manhattan pickups to JFK and LGA.
+- Recommendations are planning guidance, not guaranteed arrival times.
 
----
+## Next Product Steps
 
-## Next Steps
-
-- Add multi-month / multi-year data.
-- Add weather, holiday, and event features.
-- Calibrate late-risk probabilities.
-- Build a small Streamlit timing advisor.
-- Add SHAP or permutation importance for explainability.
-- Train live origin-destination models using external routing estimates.
-
----
+- Add multi-month and multi-year taxi records
+- Incorporate weather, holidays, events, and live routing estimates
+- Add calibrated probability intervals and SHAP explanations
+- Add saved trips and shareable recommendation links
+- Expand to Brooklyn, Queens, the Bronx, Staten Island, and Newark
 
 ## Author
 
-Andrew White  
-MSBA / Data Analytics / Applied Machine Learning
+**Andrew White**  
+MSBA · Data Analytics · Applied Machine Learning · AI Product Development
