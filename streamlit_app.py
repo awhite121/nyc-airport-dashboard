@@ -351,5 +351,5 @@ except (OSError, ValueError, json.JSONDecodeError) as exc:
     st.error(f"The dashboard could not be loaded: {exc}")
     st.stop()
 
-components.html(build_map_html(app_data), height=720, scrolling=False)
 components.html(dashboard_html, height=1600, scrolling=True)
+components.html(build_map_html(app_data), height=720, scrolling=False)
