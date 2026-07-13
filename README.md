@@ -9,7 +9,7 @@ A decision-support app for Manhattan travelers heading to **JFK** or **LaGuardia
 
 ## Live App
 
-**Streamlit:** https://nyc-airport-dashboard.streamlit.app
+**Streamlit:** https://nyc-airport-dashboard-ckfbchbv5zqxkjqjephgt9.streamlit.app/
 
 > The app URL becomes active after the first successful Streamlit Community Cloud deployment.
 
